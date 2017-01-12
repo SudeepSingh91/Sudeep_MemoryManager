@@ -13,5 +13,21 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\HeapManager">
+      <UniqueIdentifier>{a30c2542-cf49-4251-842c-9968a392848e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HeapManager">
+      <UniqueIdentifier>{af663852-29d3-4139-9a16-d210b44f31a0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Code\HeapManager\HeapManager.cpp">
+      <Filter>Source Files\HeapManager</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Code\HeapManager\HeapManager.h">
+      <Filter>Header Files\HeapManager</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
