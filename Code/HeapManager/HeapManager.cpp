@@ -173,3 +173,56 @@ bool HeapManager::Free(const void* const i_memory)
 
 	return false;
 }
+
+void HeapManager::GarbageCollect()
+{
+	DEBUG_PRINT("Performing Garbage collection");
+	
+	Descriptor* iterFreeList = m_freeList;
+	while (iterFreeList->m_next != nullptr)
+	{
+		while ((reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor) + iterFreeList->m_blockSize) == reinterpret_cast<uint8_t*>(iterFreeList->m_next))
+		{
+			iterFreeList->m_blockSize = iterFreeList->m_blockSize + sizeof(Descriptor) + iterFreeList->m_next->m_blockSize;
+			iterFreeList->m_next = iterFreeList->m_next->m_next;
+			iterFreeList->m_next->m_prev = iterFreeList;
+		}
+		
+		iterFreeList = iterFreeList->m_next;
+	}
+}
+
+size_t HeapManager::GetLargestFreeBlock() const
+{
+	Descriptor* iterFreeList = m_freeList;
+	size_t largeBlockSize = 0;
+	while (iterFreeList != nullptr)
+	{
+		if (iterFreeList->m_blockSize > largeBlockSize)
+		{
+			largeBlockSize = iterFreeList->m_blockSize;
+		}
+
+		iterFreeList = iterFreeList->m_next;
+	}
+
+	DEBUG_PRINT("Largest free block has size %d", largeBlockSize);
+
+	return largeBlockSize;
+}
+
+size_t HeapManager::GetTotalFreeMemory() const
+{
+	Descriptor* iterFreeList = m_freeList;
+	size_t totalFreeBlockSize = 0;
+	while (iterFreeList != nullptr)
+	{
+		totalFreeBlockSize += iterFreeList->m_blockSize;
+
+		iterFreeList = iterFreeList->m_next;
+	}
+
+	DEBUG_PRINT("Total free memory has size %d", totalFreeBlockSize);
+
+	return totalFreeBlockSize;
+}
