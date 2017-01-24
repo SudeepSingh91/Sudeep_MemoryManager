@@ -154,9 +154,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Code\DebugInfo\DebugInfo.cpp" />
     <ClCompile Include="Code\HeapManager\HeapManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Code\DebugInfo\DebugInfo.h" />
+    <ClInclude Include="Code\HeapManager\HeapManager-inl.h" />
     <ClInclude Include="Code\HeapManager\HeapManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

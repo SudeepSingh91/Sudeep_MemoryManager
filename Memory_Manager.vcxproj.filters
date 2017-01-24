@@ -19,14 +19,29 @@
     <Filter Include="Header Files\HeapManager">
       <UniqueIdentifier>{af663852-29d3-4139-9a16-d210b44f31a0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\DebugInfo">
+      <UniqueIdentifier>{4313e068-916e-42f1-8fc6-475ca88a808e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DebugInfo">
+      <UniqueIdentifier>{ae63c377-d452-4fed-beed-749f38b26de7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Code\HeapManager\HeapManager.cpp">
       <Filter>Source Files\HeapManager</Filter>
     </ClCompile>
+    <ClCompile Include="Code\DebugInfo\DebugInfo.cpp">
+      <Filter>Source Files\DebugInfo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Code\HeapManager\HeapManager.h">
+      <Filter>Header Files\HeapManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Code\DebugInfo\DebugInfo.h">
+      <Filter>Header Files\DebugInfo</Filter>
+    </ClInclude>
+    <ClInclude Include="Code\HeapManager\HeapManager-inl.h">
       <Filter>Header Files\HeapManager</Filter>
     </ClInclude>
   </ItemGroup>

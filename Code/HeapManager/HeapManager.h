@@ -1,24 +1,16 @@
 #ifndef HEAPMANAGER_H
 #define HEAPAMANGER_H
 
-struct Descriptor
-{
-	size_t m_blockSize;
-	Descriptor* m_next;
-	void* m_blockAddress;
-};
-
 class HeapManager
 {
 public:
-	HeapManager(void* i_memory, const size_t i_size);
+	static HeapManager* Create(void* i_pMemory, size_t i_memorySize);
+	void Destroy();
 
-	~HeapManager();
-
-	void* Alloc(const size_t i_size);
+	inline void* Alloc(const size_t i_size);
 	void* Alloc(const size_t i_size, const unsigned int i_alignment);
 	
-	bool Free(void* i_memory);
+	bool Free(const void* const i_memory);
 
 	void GarbageCollect();
 
@@ -28,10 +20,30 @@ public:
 	size_t GetTotalFreeMemory() const;
 
 private:
+	HeapManager(void* i_memory, const size_t i_size);
+	HeapManager(const HeapManager& i_heapManager);
+	HeapManager operator=(const HeapManager& i_heapManager);
+
+	struct Descriptor
+	{
+		size_t m_blockSize;
+		Descriptor* m_next;
+		Descriptor* m_prev;
+	};
+	
+	void AddToAllocatedList(Descriptor* const i_descriptor);
+	bool AddToFreeList(Descriptor* const i_descriptor);
+
+	inline bool IsPowerOfTwo(const unsigned int i_value);
+	inline void* RoundUp(const void* const i_memAddr, const unsigned int i_align);
+	inline void* RoundDown(const void* const i_memAddr, const unsigned int i_align);
+
+	void* m_heapBase;
 	size_t m_heapSize;
 	Descriptor* m_freeList;
 	Descriptor* m_allocatedList;
-	void* m_heapBase;
 };
+
+#include "HeapManager-inl.h"
 
 #endif
