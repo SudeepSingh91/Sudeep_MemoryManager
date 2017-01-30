@@ -1,6 +1,6 @@
-#include <stdarg.h>		//for vs_<xxx>
-#include <stdio.h>		//for vsprintf_s
-#include <Windows.h>	// outputdebugstring
+#include <stdarg.h>
+#include <stdio.h>
+#include <Windows.h>
 
 namespace Debugging
 {
