@@ -5,6 +5,11 @@
 
 #include "../DebugInfo/DebugInfo.h"
 
+#ifdef _DEBUG
+	const uint8_t HeapManager::m_gaurdBandSize = sizeof(void*);
+	const uint8_t HeapManager::m_gaurdBandValue = 0xFD;
+#endif
+
 HeapManager* HeapManager::Create(void* i_pMemory, size_t i_memorySize)
 {
 	assert(i_pMemory != nullptr);
@@ -33,7 +38,24 @@ HeapManager::HeapManager(void* const i_memory, const size_t i_size) : m_heapBase
 	DEBUG_PRINT("Called constructor of Memory Manager");
 
 	m_freeList = reinterpret_cast<Descriptor*>(RoundUp(m_heapBase, alignof(Descriptor)));
-	m_freeList->m_blockSize = m_heapSize - sizeof(Descriptor);
+	size_t initialOffset = reinterpret_cast<uint8_t*>(m_freeList) - static_cast<uint8_t*>(m_heapBase);
+
+#ifdef _DEBUG
+	uint8_t* gaurdbandStart = reinterpret_cast<uint8_t*>(m_freeList) + sizeof(Descriptor);
+	uint8_t* gaurdbandEnd = reinterpret_cast<uint8_t*>(m_freeList) + m_heapSize - initialOffset;
+
+	for (uint8_t i = 0; i < m_gaurdBandSize; i++)
+	{
+		gaurdbandStart = m_gaurdBandValue;
+		gaurdbandStart++;
+		gaurdbandEnd--;
+		gaurdbandEnd = m_gaurdBandValue;
+	}
+
+	m_freeList->m_blockSize = m_heapSize - (2 * m_gaurdBandSize);
+#endif
+
+	m_freeList->m_blockSize = m_heapSize - sizeof(Descriptor) - initialOffset;
 	m_freeList->m_next = nullptr;
 	m_freeList->m_prev = nullptr;
 }
@@ -84,20 +106,19 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 {
 	assert(i_size != 0);
 	assert(IsPowerOfTwo(i_alignment));
-
-	if (i_size >= ((m_heapSize) - sizeof(Descriptor)))
-	{
-		return nullptr;
-
-		DEBUG_PRINT("Requested more memory then size of heap");
-	}
+	assert(i_size <= (m_heapSize - sizeof(Descriptor)));
 	
 	Descriptor* iterFreeList = m_freeList;
 	while (iterFreeList != nullptr);
 	{
 		const uint8_t extraBytesAlloc = 64;
+		void* memoryBlock = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor);
 
-		if ((iterFreeList->m_blockSize >= i_size) && (iterFreeList->m_blockSize < (i_size + extraBytesAlloc)) && (alignof(reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor)) == i_alignment))
+#ifdef _DEBUG
+		memoryBlock = static_cast<uint8_t*>(memoryBlock) + m_gaurdBandSize;
+#endif
+		
+		if ((iterFreeList->m_blockSize >= i_size) && (iterFreeList->m_blockSize < (i_size + extraBytesAlloc)) && (alignof(memoryBlock) == i_alignment))
 		{
 			if ((iterFreeList->m_prev != nullptr) && (iterFreeList->m_next != nullptr))
 			{
@@ -106,9 +127,9 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 			}
 			else if ((iterFreeList->m_prev == nullptr) && (iterFreeList->m_next != nullptr))
 			{
-				iterFreeList->m_next->m_prev = iterFreeList->m_prev;
+				iterFreeList->m_next->m_prev = nullptr;
 			}
-			else if (iterFreeList->m_next == nullptr)
+			else if ((iterFreeList->m_next == nullptr) && (iterFreeList->m_prev != nullptr))
 			{
 				m_freeList = iterFreeList->m_prev;
 				m_freeList->m_next = nullptr;
@@ -118,21 +139,44 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 
 			DEBUG_PRINT("Found block of almost equal size in free list to allocate memory requested");
 
-			return reinterpret_cast<uint8_t*>(m_allocatedList) + sizeof(Descriptor);
+			return memoryBlock;
 		}
 		else if (iterFreeList->m_blockSize >= (i_size + extraBytesAlloc))
 		{
-			void* startOfMemBlock = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor) + iterFreeList->m_blockSize - i_size;
+			uint8_t* startOfMemBlock = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor) + iterFreeList->m_blockSize - i_size;
+
+#ifdef _DEBUG
+			startOfMemBlock = startOfMemBlock - m_gaurdBandSize;
+			m_freeList->m_blockSize = m_freeList->m_blockSize - (2 * m_gaurdBandSize);
+#endif
+
 			void* alignedStartOfMemBlock = RoundDown(startOfMemBlock, i_alignment);
+			size_t offsetForAlignment = startOfMemBlock - static_cast<uint8_t*>(alignedStartOfMemBlock);
+
+#ifdef _DEBUG
+			uint8_t* gaurdbandStart = static_cast<uint8_t*>(alignedStartOfMemBlock) - m_gaurdBandSize;
+			uint8_t* gaurdbandEnd = static_cast<uint8_t*>(alignedStartOfMemBlock) + i_size + offsetForAlignment;
+
+			for (uint8_t i = 0; i < m_gaurdBandSize; i++)
+			{
+				gaurdbandStart = m_gaurdBandValue;
+				gaurdbandEnd = m_gaurdBandValue;
+				gaurdbandStart++;
+				gaurdbandEnd++;
+			}
+
+			alignedStartOfMemBlock = gaurdbandStart;
+#endif 
+
 			Descriptor* descOfMemBlock = reinterpret_cast<Descriptor*>(reinterpret_cast<uint8_t*>(alignedStartOfMemBlock) - sizeof(Descriptor));
-			descOfMemBlock->m_blockSize = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor) + iterFreeList->m_blockSize - static_cast<uint8_t*>(alignedStartOfMemBlock);
-			iterFreeList->m_blockSize = reinterpret_cast<uint8_t*>(descOfMemBlock) - (reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor));
+			descOfMemBlock->m_blockSize = i_size + offsetForAlignment;
+			iterFreeList->m_blockSize = iterFreeList->m_blockSize - descOfMemBlock->m_blockSize - sizeof(Descriptor);
 
 			AddToAllocatedList(descOfMemBlock);
 
 			DEBUG_PRINT("Segmented an existing free block to allocate memory requested");
 
-			return reinterpret_cast<uint8_t*>(m_allocatedList) + sizeof(Descriptor);
+			return alignedStartOfMemBlock;
 		}
 
 		iterFreeList = iterFreeList->m_next;
@@ -147,7 +191,13 @@ bool HeapManager::Free(void* const i_memory)
 {
 	assert(i_memory != nullptr);
 
-	Descriptor* iterAllocList = reinterpret_cast<Descriptor*>(static_cast<uint8_t*>(i_memory) - sizeof(Descriptor));
+	uint8_t* descriptorAddr = static_cast<uint8_t*>(i_memory) - sizeof(Descriptor);
+
+#ifdef _DEBUG
+	descriptorAddr = descriptorAddr - m_gaurdBandSize;
+#endif
+
+	Descriptor* iterAllocList = reinterpret_cast<Descriptor*>(descriptorAddr);
 	
 	if ((iterAllocList->m_next != nullptr) && (iterAllocList->m_prev != nullptr))
 	{
@@ -162,7 +212,7 @@ bool HeapManager::Free(void* const i_memory)
 	}
 	else if ((iterAllocList->m_next != nullptr) && (iterAllocList->m_prev == nullptr))
 	{
-		iterAllocList->m_next->m_prev = iterAllocList->m_prev;
+		iterAllocList->m_next->m_prev = nullptr;
 
 		DEBUG_PRINT("Freed the memory at the first block in the list");
 
@@ -170,12 +220,20 @@ bool HeapManager::Free(void* const i_memory)
 
 		return true;
 	}
-	else if (iterAllocList->m_next == nullptr)
+	else if ((iterAllocList->m_prev != nullptr) && (iterAllocList->m_next == nullptr))
 	{
 		m_allocatedList = iterAllocList->m_prev;
 		m_allocatedList->m_next = nullptr;
-
+		
 		DEBUG_PRINT("Freed the memory pointed by m_allocatedList");
+
+		AddToFreeList(iterAllocList);
+
+		return true;
+	}
+	else if ((iterAllocList->m_prev == nullptr) && (iterAllocList->m_next == nullptr))
+	{
+		DEBUG_PRINT("Freed the memory block in the only node in the m_allocatedList");
 
 		AddToFreeList(iterAllocList);
 
@@ -212,7 +270,13 @@ bool HeapManager::IsAllocated(void* const i_memory) const
 	Descriptor* iterAllocList = m_allocatedList;
 	while (iterAllocList != nullptr)
 	{
-		if ((reinterpret_cast<uint8_t*>(iterAllocList) + sizeof(Descriptor)) == i_memory)
+		uint8_t* memoryBlock = reinterpret_cast<uint8_t*>(iterAllocList) + sizeof(Descriptor);
+
+#ifdef _DEBUG
+		memoryBlock = memoryBlock + m_gaurdBandSize;
+#endif 
+
+		if (memoryBlock == i_memory)
 		{
 			DEBUG_PRINT("%p has been allocated", i_memory);
 			

@@ -38,11 +38,16 @@ private:
 	inline bool IsPowerOfTwo(const unsigned int i_value);
 	inline void* RoundUp(void* const i_memAddr, const unsigned int i_align);
 	inline void* RoundDown(void* const i_memAddr, const unsigned int i_align);
-
-	void* const m_heapBase;
+	
 	const size_t m_heapSize;
+	void* const m_heapBase;
 	Descriptor* m_allocatedList;
 	Descriptor* m_freeList;
+
+#if _DEBUG
+	static const uint8_t m_gaurdBandSize;
+	static const uint8_t m_gaurdBandValue;
+#endif
 };
 
 #include "HeapManager-inl.h"
