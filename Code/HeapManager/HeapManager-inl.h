@@ -13,25 +13,25 @@ inline bool HeapManager::IsPowerOfTwo(const unsigned int i_value)
 	return i_value && !(i_value & (i_value - 1));
 }
 
-inline void* HeapManager::RoundUp(void* const i_memAddr, const unsigned int i_alignment)
+inline void* HeapManager::RoundUp(void* const i_memoryAddr, const unsigned int i_alignment)
 {
-	assert(i_memAddr != nullptr);
+	assert(i_memoryAddr != nullptr);
 	assert(IsPowerOfTwo(i_alignment));
 
-	return reinterpret_cast<void*>((reinterpret_cast<uintptr_t>(i_memAddr) + (i_alignment - 1)) & ~uintptr_t(i_alignment - 1));
+	return reinterpret_cast<void*>((reinterpret_cast<uintptr_t>(i_memoryAddr) + (i_alignment - 1)) & ~uintptr_t(i_alignment - 1));
 }
 
-inline void* HeapManager::RoundDown(void* const i_memAddr, const unsigned int i_alignment)
+inline void* HeapManager::RoundDown(void* const i_memoryAddr, const unsigned int i_alignment)
 {
-	assert(i_memAddr != nullptr);
+	assert(i_memoryAddr != nullptr);
 	assert(IsPowerOfTwo(i_alignment));
 
-	return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(i_memAddr) & ~uintptr_t((i_alignment - 1)));
+	return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(i_memoryAddr) & ~uintptr_t((i_alignment - 1)));
 }
 
-inline bool HeapManager::Contains(void* const i_memory) const
+inline bool HeapManager::Contains(void* const i_memoryAddr) const
 {
-	assert(i_memory != nullptr);
+	assert(i_memoryAddr != nullptr);
 
-	return (i_memory >= m_heapBase) && (i_memory < (reinterpret_cast<uint8_t*>(m_heapBase) + m_heapSize));
+	return (i_memoryAddr >= m_heapBase) && (i_memoryAddr < (reinterpret_cast<uint8_t*>(m_heapBase) + m_heapSize));
 }

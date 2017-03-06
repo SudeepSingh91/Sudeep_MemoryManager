@@ -10,16 +10,17 @@
 	const uint8_t HeapManager::m_gaurdBandValue = 0xFD;
 #endif
 
-HeapManager* HeapManager::Create(void* i_pMemory, size_t i_memorySize)
+HeapManager* HeapManager::Create(void* i_memoryAddr, size_t i_memorySize)
 {
-	assert(i_pMemory != nullptr);
+	assert(i_memoryAddr != nullptr);
 	assert(i_memorySize > (sizeof(HeapManager) + (sizeof(void*) * 2)));
 
-	void* heapManagerMem = i_pMemory;
-	i_pMemory = static_cast<uint8_t*>(i_pMemory) + sizeof(HeapManager);
+	void* heapManagerMem = i_memoryAddr;
+	i_memoryAddr = static_cast<uint8_t*>(i_memoryAddr) + sizeof(HeapManager);
 	i_memorySize -= sizeof(HeapManager);
 
-	HeapManager* m_heapManager = new (heapManagerMem) HeapManager(i_pMemory, i_memorySize);
+	HeapManager* m_heapManager = new (heapManagerMem) HeapManager(i_memoryAddr, i_memorySize);
+	
 	DEBUG_PRINT("Created HeapManager with size %d", i_memorySize);
 
 	return m_heapManager;
@@ -27,15 +28,17 @@ HeapManager* HeapManager::Create(void* i_pMemory, size_t i_memorySize)
 
 void HeapManager::Destroy()
 {
-
+	void* memoryToFree = static_cast<uint8_t*>(m_heapBase) - sizeof(HeapManager);
+	this->~HeapManager();
+	_aligned_free(memoryToFree);
 }
 
-HeapManager::HeapManager(void* const i_memory, const size_t i_size) : m_heapBase(i_memory), m_heapSize(i_size), m_allocatedList(nullptr), m_freeList(nullptr)
+HeapManager::HeapManager(void* const i_memoryAddr, const size_t i_size) : m_heapSize(i_size), m_heapBase(i_memoryAddr), m_allocatedList(nullptr), m_freeList(nullptr)
 {
-	assert(i_memory != nullptr);
-	assert(i_size != 0);
+	assert(i_memoryAddr != nullptr);
+	assert(i_size > (sizeof(void*) * 2));
 
-	DEBUG_PRINT("Called constructor of Memory Manager");
+	DEBUG_PRINT("Called constructor of Heap Manager");
 
 	m_freeList = reinterpret_cast<Descriptor*>(RoundUp(m_heapBase, alignof(Descriptor)));
 	size_t initialOffset = reinterpret_cast<uint8_t*>(m_freeList) - static_cast<uint8_t*>(m_heapBase);
@@ -58,6 +61,11 @@ HeapManager::HeapManager(void* const i_memory, const size_t i_size) : m_heapBase
 	m_freeList->m_blockSize = m_heapSize - sizeof(Descriptor) - initialOffset;
 	m_freeList->m_next = nullptr;
 	m_freeList->m_prev = nullptr;
+}
+
+HeapManager::~HeapManager()
+{
+
 }
 
 void HeapManager::AddToFreeList(Descriptor* const i_descriptor)
@@ -187,17 +195,19 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 	return nullptr;
 }
 
-bool HeapManager::Free(void* const i_memory)
+void HeapManager::Free(void* const i_memoryAddr)
 {
-	assert(i_memory != nullptr);
+	assert(i_memoryAddr != nullptr);
 
-	uint8_t* descriptorAddr = static_cast<uint8_t*>(i_memory) - sizeof(Descriptor);
+	uint8_t* descriptorAddr = static_cast<uint8_t*>(i_memoryAddr) - sizeof(Descriptor);
 
 #ifdef _DEBUG
 	descriptorAddr = descriptorAddr - m_gaurdBandSize;
 #endif
 
 	Descriptor* iterAllocList = reinterpret_cast<Descriptor*>(descriptorAddr);
+
+	assert(IsValidDescriptor(iterAllocList));
 	
 	if ((iterAllocList->m_next != nullptr) && (iterAllocList->m_prev != nullptr))
 	{
@@ -207,8 +217,6 @@ bool HeapManager::Free(void* const i_memory)
 		DEBUG_PRINT("Freed the memory");
 
 		AddToFreeList(iterAllocList);
-
-		return true;
 	}
 	else if ((iterAllocList->m_next != nullptr) && (iterAllocList->m_prev == nullptr))
 	{
@@ -217,8 +225,6 @@ bool HeapManager::Free(void* const i_memory)
 		DEBUG_PRINT("Freed the memory at the first block in the list");
 
 		AddToFreeList(iterAllocList);
-
-		return true;
 	}
 	else if ((iterAllocList->m_prev != nullptr) && (iterAllocList->m_next == nullptr))
 	{
@@ -228,27 +234,97 @@ bool HeapManager::Free(void* const i_memory)
 		DEBUG_PRINT("Freed the memory pointed by m_allocatedList");
 
 		AddToFreeList(iterAllocList);
-
-		return true;
 	}
 	else if ((iterAllocList->m_prev == nullptr) && (iterAllocList->m_next == nullptr))
 	{
 		DEBUG_PRINT("Freed the memory block in the only node in the m_allocatedList");
 
 		AddToFreeList(iterAllocList);
+	}
+}
 
-		return true;
+HeapManager::Descriptor* HeapManager::SortedMerge(Descriptor* const i_descriptor1, Descriptor* const i_descriptor2)
+{
+	Descriptor* result = nullptr;
+
+	if (i_descriptor1 == nullptr)
+		return i_descriptor2;
+	else if (i_descriptor2 == nullptr)
+		return i_descriptor1;
+
+	if (i_descriptor1 >= i_descriptor2)
+	{
+		result = i_descriptor1;
+		result->m_prev = SortedMerge(i_descriptor1->m_prev, i_descriptor2);
+	}
+	else
+	{
+		result = i_descriptor2;
+		result->m_prev = SortedMerge(i_descriptor1, i_descriptor2->m_prev);
 	}
 
-	DEBUG_PRINT("Wrong pointer passed for free");
+	return result;
+}
 
-	return false;
+void HeapManager::SplitList(const Descriptor* const i_source, Descriptor** const io_front, Descriptor** const io_back)
+{
+	if ((i_source == nullptr) || (i_source->m_prev == nullptr))
+	{
+		*io_front = const_cast<Descriptor*>(i_source);
+		*io_back = nullptr;
+	}
+	else
+	{
+		const Descriptor* fast = i_source->m_prev;
+		Descriptor* slow = const_cast<Descriptor*>(i_source);
+
+		while (fast != nullptr)
+		{
+			fast = fast->m_prev;
+			if (fast != nullptr)
+			{
+				fast = fast->m_prev;
+				slow = slow->m_prev;
+			}
+		}
+
+		*io_front = const_cast<Descriptor*>(i_source);
+		*io_back = slow->m_prev;
+		slow->m_prev = nullptr;
+	}
+}
+
+void HeapManager::MergeSort(Descriptor** const i_descriptor)
+{
+	assert(i_descriptor != nullptr);
+	assert(*i_descriptor != nullptr);
+	
+	const Descriptor* const head = *i_descriptor;
+
+	if ((head == nullptr) || (head->m_prev == nullptr))
+	{
+		return;
+	}
+
+	Descriptor* front = nullptr;
+	Descriptor* back = nullptr;
+
+	SplitList(head, &front, &back);
+
+	MergeSort(&front);
+	MergeSort(&back);
+
+	*i_descriptor = SortedMerge(front, back);
 }
 
 void HeapManager::GarbageCollect()
 {
-	DEBUG_PRINT("Performing Garbage collection");
+	DEBUG_PRINT("Started Garbage collection");
 	
+	MergeSort(&m_freeList);
+
+	DEBUG_PRINT("Sorted Free List");
+
 	Descriptor* iterFreeList = m_freeList;
 	while (iterFreeList->m_prev != nullptr)
 	{
@@ -261,13 +337,16 @@ void HeapManager::GarbageCollect()
 		
 		iterFreeList = iterFreeList->m_prev;
 	}
+
+	DEBUG_PRINT("Completed Garbage Collection");
 }
 
-bool HeapManager::IsAllocated(void* const i_memory) const
+bool HeapManager::IsAllocated(void* const i_memoryAddr) const
 {
-	assert(i_memory != nullptr);
+	assert(i_memoryAddr != nullptr);
 	
 	Descriptor* iterAllocList = m_allocatedList;
+
 	while (iterAllocList != nullptr)
 	{
 		uint8_t* memoryBlock = reinterpret_cast<uint8_t*>(iterAllocList) + sizeof(Descriptor);
@@ -276,14 +355,14 @@ bool HeapManager::IsAllocated(void* const i_memory) const
 		memoryBlock = memoryBlock + m_gaurdBandSize;
 #endif 
 
-		if (memoryBlock == i_memory)
+		if (memoryBlock == i_memoryAddr)
 		{
-			DEBUG_PRINT("%p has been allocated", i_memory);
+			DEBUG_PRINT("%p has been allocated", i_memoryAddr);
 			
 			return true;
 		}
 		
-		DEBUG_PRINT("%p has not been allocated", i_memory);
+		DEBUG_PRINT("%p has not been allocated", i_memoryAddr);
 
 		iterAllocList = iterAllocList->m_prev;
 	}
@@ -324,4 +403,26 @@ size_t HeapManager::GetTotalFreeMemory() const
 	DEBUG_PRINT("Total free memory has size %d", totalFreeBlockSize);
 
 	return totalFreeBlockSize;
+}
+
+bool HeapManager::IsValidDescriptor(const Descriptor* const i_descriptor)
+{
+	assert(i_descriptor != nullptr);
+	
+	Descriptor* iterFreeList = m_freeList;
+	while (iterFreeList != nullptr)
+	{
+		if (iterFreeList == i_descriptor)
+		{
+			DEBUG_PRINT("%p is a valid Descriptor", i_descriptor);
+			
+			return true;
+		}
+
+		iterFreeList = iterFreeList->m_prev;
+	}
+
+	DEBUG_PRINT("%p is not a valid Descriptor", i_descriptor);
+
+	return false;
 }

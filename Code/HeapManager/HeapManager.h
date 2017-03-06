@@ -4,25 +4,27 @@
 class HeapManager
 {
 public:
-	static HeapManager* Create(void* const i_pMemory, size_t i_memorySize);
+	static HeapManager* Create(void* i_memoryAddr, size_t i_memorySize);
 	void Destroy();
 
 	inline void* Alloc(const size_t i_size);
 	void* Alloc(const size_t i_size, const unsigned int i_alignment);
 	
-	bool Free(void* const i_memory);
+	void Free(void* const i_memoryAddr);
 
 	void GarbageCollect();
 
-	inline bool Contains(void* const i_memory) const;
-	bool IsAllocated(void* const i_memory) const;
+	inline bool Contains(void* const i_memoryAddr) const;
+	bool IsAllocated(void* const i_memoryAddr) const;
 	size_t GetLargestFreeBlock() const;
 	size_t GetTotalFreeMemory() const;
 
 private:
-	HeapManager(void* i_memory, const size_t i_size);
+	HeapManager(void* const i_memoryAddr, const size_t i_size);
 	HeapManager(const HeapManager& i_heapManager);
 	HeapManager operator=(const HeapManager& i_heapManager);
+
+	~HeapManager();
 
 	struct Descriptor
 	{
@@ -33,11 +35,14 @@ private:
 	
 	void AddToAllocatedList(Descriptor* const i_descriptor);
 	void AddToFreeList(Descriptor* const i_descriptor);
-	void SortFreeList();
+	bool IsValidDescriptor(const Descriptor* const i_descriptor);
+	void MergeSort(Descriptor** const i_descriptor);
+	Descriptor* SortedMerge(Descriptor* const i_descriptor1, Descriptor* const i_descriptor2);
+	void SplitList(const Descriptor* const i_source, Descriptor** const io_front, Descriptor** const io_back);
 
 	inline bool IsPowerOfTwo(const unsigned int i_value);
-	inline void* RoundUp(void* const i_memAddr, const unsigned int i_align);
-	inline void* RoundDown(void* const i_memAddr, const unsigned int i_align);
+	inline void* RoundUp(void* const i_memoryAddr, const unsigned int i_align);
+	inline void* RoundDown(void* const i_memoryAddr, const unsigned int i_align);
 	
 	const size_t m_heapSize;
 	void* const m_heapBase;
