@@ -33,6 +33,9 @@
     <ClCompile Include="Code\DebugInfo\DebugInfo.cpp">
       <Filter>Source Files\DebugInfo</Filter>
     </ClCompile>
+    <ClCompile Include="Code\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Code\HeapManager\HeapManager.h">

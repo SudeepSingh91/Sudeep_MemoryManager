@@ -24,7 +24,7 @@ namespace Debugging
 		OutputDebugStringA(str_output);
 	}
 
-	void CheckCondition(bool i_condition)
+	void CheckCondition(const bool i_condition)
 	{
 		if (i_condition == false)
 			__debugbreak();

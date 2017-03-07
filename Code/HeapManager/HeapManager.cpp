@@ -1,6 +1,5 @@
 #include "HeapManager.h"
 
-#include <stdint.h>
 #include <new>
 
 #include "../DebugInfo/DebugInfo.h"
@@ -47,12 +46,12 @@ HeapManager::HeapManager(void* const i_memoryAddr, const size_t i_size) : m_heap
 	uint8_t* gaurdbandStart = reinterpret_cast<uint8_t*>(m_freeList) + sizeof(Descriptor);
 	uint8_t* gaurdbandEnd = reinterpret_cast<uint8_t*>(m_freeList) + m_heapSize - initialOffset;
 
-	for (uint8_t i = 0; i < m_gaurdBandSize; i++)
+	for (short i = 0; i < m_gaurdBandSize; i++)
 	{
-		gaurdbandStart = m_gaurdBandValue;
+		*gaurdbandStart = m_gaurdBandValue;
 		gaurdbandStart++;
 		gaurdbandEnd--;
-		gaurdbandEnd = m_gaurdBandValue;
+		*gaurdbandEnd = m_gaurdBandValue;
 	}
 
 	m_freeList->m_blockSize = m_heapSize - (2 * m_gaurdBandSize);
@@ -117,16 +116,18 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 	assert(i_size <= (m_heapSize - sizeof(Descriptor)));
 	
 	Descriptor* iterFreeList = m_freeList;
+	
 	while (iterFreeList != nullptr);
 	{
 		const uint8_t extraBytesAlloc = 64;
 		void* memoryBlock = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor);
-
+		void* alignedStartOfMemBlock = nullptr;
+		
 #ifdef _DEBUG
-		memoryBlock = static_cast<uint8_t*>(memoryBlock) + m_gaurdBandSize;
+		memoryBlock = static_cast<uint8_t*>(memoryBlock) + m_gaurdBandSize; 
 #endif
 		
-		if ((iterFreeList->m_blockSize >= i_size) && (iterFreeList->m_blockSize < (i_size + extraBytesAlloc)) && (alignof(memoryBlock) == i_alignment))
+		if ((iterFreeList->m_blockSize >= i_size) && (iterFreeList->m_blockSize < (i_size + extraBytesAlloc)) && ((reinterpret_cast<uintptr_t>(memoryBlock) % i_alignment) == 0))
 		{
 			if ((iterFreeList->m_prev != nullptr) && (iterFreeList->m_next != nullptr))
 			{
@@ -158,17 +159,17 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 			m_freeList->m_blockSize = m_freeList->m_blockSize - (2 * m_gaurdBandSize);
 #endif
 
-			void* alignedStartOfMemBlock = RoundDown(startOfMemBlock, i_alignment);
+			alignedStartOfMemBlock = RoundDown(startOfMemBlock, i_alignment);
 			size_t offsetForAlignment = startOfMemBlock - static_cast<uint8_t*>(alignedStartOfMemBlock);
 
 #ifdef _DEBUG
 			uint8_t* gaurdbandStart = static_cast<uint8_t*>(alignedStartOfMemBlock) - m_gaurdBandSize;
 			uint8_t* gaurdbandEnd = static_cast<uint8_t*>(alignedStartOfMemBlock) + i_size + offsetForAlignment;
 
-			for (uint8_t i = 0; i < m_gaurdBandSize; i++)
+			for (short i = 0; i < m_gaurdBandSize; i++)
 			{
-				gaurdbandStart = m_gaurdBandValue;
-				gaurdbandEnd = m_gaurdBandValue;
+				*gaurdbandStart = m_gaurdBandValue;
+				*gaurdbandEnd = m_gaurdBandValue;
 				gaurdbandStart++;
 				gaurdbandEnd++;
 			}

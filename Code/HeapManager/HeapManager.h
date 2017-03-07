@@ -1,6 +1,8 @@
 #ifndef HEAPMANAGER_H
 #define HEAPAMANGER_H
 
+#include <stdint.h>
+
 class HeapManager
 {
 public:

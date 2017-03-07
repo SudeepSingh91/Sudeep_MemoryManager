@@ -156,6 +156,7 @@
   <ItemGroup>
     <ClCompile Include="Code\DebugInfo\DebugInfo.cpp" />
     <ClCompile Include="Code\HeapManager\HeapManager.cpp" />
+    <ClCompile Include="Code\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Code\DebugInfo\DebugInfo.h" />
