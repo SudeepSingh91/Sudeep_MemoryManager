@@ -2,7 +2,7 @@
 
 namespace Debugging
 {
-	void OutputDebuggingInfo(const char * i_fmt, const char* file, const int line_number, ...);
+	void OutputDebuggingInfo(const char * i_fmt, const char* i_file, const int i_lineNumber, ...);
 	void CheckCondition(const bool i_condition);
 }
 
