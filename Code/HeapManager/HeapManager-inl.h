@@ -8,7 +8,7 @@ inline void* HeapManager::Alloc(const size_t i_size)
 	return Alloc(i_size, defaultAlign);
 }
 
-inline bool HeapManager::IsPowerOfTwo(const unsigned int i_value)
+inline bool HeapManager::IsPowerOfTwo(const size_t i_value)
 {
 	return i_value && !(i_value & (i_value - 1));
 }

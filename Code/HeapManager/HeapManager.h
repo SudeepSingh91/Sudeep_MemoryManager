@@ -42,7 +42,7 @@ private:
 	Descriptor* SortedMerge(Descriptor* const i_descriptor1, Descriptor* const i_descriptor2);
 	void SplitList(const Descriptor* const i_source, Descriptor** const io_front, Descriptor** const io_back);
 
-	inline bool IsPowerOfTwo(const unsigned int i_value);
+	inline bool IsPowerOfTwo(const size_t i_value);
 	inline void* RoundUp(void* const i_memoryAddr, const unsigned int i_align);
 	inline void* RoundDown(void* const i_memoryAddr, const unsigned int i_align);
 	
