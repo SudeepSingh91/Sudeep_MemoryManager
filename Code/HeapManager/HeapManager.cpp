@@ -47,7 +47,7 @@ HeapManager::HeapManager(void* const i_memoryAddr, const size_t i_size) : m_heap
 	uint8_t* gaurdbandStart = reinterpret_cast<uint8_t*>(m_freeList) + sizeof(Descriptor);
 	uint8_t* gaurdbandEnd = reinterpret_cast<uint8_t*>(m_freeList) + m_heapSize - initialOffset;
 
-	for (short i = 0; i < m_gaurdBandSize; i++)
+	for (uint8_t i = 0; i < m_gaurdBandSize; i++)
 	{
 		*gaurdbandStart = m_gaurdBandValue;
 		gaurdbandStart++;
@@ -122,7 +122,7 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 	{
 		const uint8_t extraBytesAlloc = 4;
 		void* memoryBlock = reinterpret_cast<uint8_t*>(iterFreeList) + sizeof(Descriptor);
-		short bytesForGaurband = 0;
+		uint8_t bytesForGaurband = 0;
 		
 #if _DEBUG
 		memoryBlock = static_cast<uint8_t*>(memoryBlock) + m_gaurdBandSize; 
@@ -163,7 +163,7 @@ void* HeapManager::Alloc(const size_t i_size, const unsigned int i_alignment)
 			uint8_t* gaurdbandStart = alignedStartOfMemBlock - m_gaurdBandSize;
 			uint8_t* gaurdbandEnd = alignedStartOfMemBlock + i_size + offsetForAlignment;
 
-			for (short i = 0; i < m_gaurdBandSize; i++)
+			for (uint8_t i = 0; i < m_gaurdBandSize; i++)
 			{
 				*gaurdbandStart = m_gaurdBandValue;
 				*gaurdbandEnd = m_gaurdBandValue;
@@ -338,7 +338,7 @@ void HeapManager::GarbageCollect()
 	}
 
 	iterFreeList = m_freeList;
-	short bytesForGaurdband = 0;
+	uint8_t bytesForGaurdband = 0;
 
 #if _DEBUG
 	bytesForGaurdband = 2 * m_gaurdBandSize;
